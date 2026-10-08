@@ -13,6 +13,24 @@ export const groupMeta: Record<InstrumentGroup, { name: string; color: string; s
   strings: { name: "弦乐组", color: "#8e7dff", soft: "rgba(142,125,255,.14)" },
 };
 
+export const instrumentVisualMeta: Record<string, { color: string; players: number }> = {
+  violin1: { color: "#c4b5fd", players: 10 },
+  violin2: { color: "#a78bfa", players: 8 },
+  viola: { color: "#8b5cf6", players: 6 },
+  cello: { color: "#6d28d9", players: 6 },
+  bass: { color: "#4c1d95", players: 4 },
+  flute: { color: "#7ce7d3", players: 2 },
+  oboe: { color: "#62dcc5", players: 2 },
+  clarinet: { color: "#45cbb2", players: 2 },
+  bassoon: { color: "#2daf98", players: 2 },
+  horn: { color: "#f1c96f", players: 4 },
+  trumpet: { color: "#e9b951", players: 2 },
+  trombone: { color: "#dca13d", players: 3 },
+  tuba: { color: "#c98727", players: 1 },
+  timpani: { color: "#ff927f", players: 2 },
+  percussion: { color: "#f66b58", players: 3 },
+};
+
 export const instruments: Instrument[] = [
   { id:"flute", name:"长笛", english:"Flute", group:"woodwinds", short:"Fl.", range:"C4–D7", commonRange:"D4–C7", transposition:"非移调", character:"明亮、通透；高音区穿透力强。", technique:"连奏、吐音、颤音、泛音", note:"低音区易被厚重织体遮盖。", position:[-2.7,0,-1.5] },
   { id:"oboe", name:"双簧管", english:"Oboe", group:"woodwinds", short:"Ob.", range:"B♭3–A6", commonRange:"C4–G6", transposition:"非移调", character:"鼻音感鲜明，旋律辨识度高。", technique:"连奏、双吐、颤音", note:"弱奏仍有较强存在感。", position:[-.9,0,-1.7] },
