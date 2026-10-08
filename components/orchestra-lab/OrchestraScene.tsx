@@ -117,12 +117,15 @@ function addInstrumentModel(group: THREE.Group, id: string, color: THREE.Color, 
 }
 
 function addMusician(scene: THREE.Scene, id: string, position: THREE.Vector3, color: THREE.Color, index: number) {
-  const root = new THREE.Group(); root.position.copy(position); root.rotation.y = Math.atan2(-position.x, 4 - position.z); root.userData.id = id; scene.add(root);
+  const root = new THREE.Group(); root.position.copy(position); root.rotation.y = Math.atan2(position.x, position.z - 4); root.userData.id = id; scene.add(root);
   const skin = material(index % 3 === 0 ? 0xe7b58f : index % 3 === 1 ? 0xc88764 : 0x8c5b45, .82), cloth = material(color.clone().multiplyScalar(.68), .72), black = material(0x18202d, .78);
   const meshes: THREE.Mesh[] = [];
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.18, .43, 4, 10), cloth, [0, .74, 0]));
   meshes.push(addMesh(root, new THREE.SphereGeometry(.145, 14, 12), skin, [0, 1.18, 0]));
   meshes.push(addMesh(root, new THREE.SphereGeometry(.151, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), material(index % 2 ? 0x34251f : 0x1f2937, .9), [0, 1.215, 0]));
+  meshes.push(addMesh(root, new THREE.SphereGeometry(.018, 8, 6), black, [-.05, 1.2, -.135]));
+  meshes.push(addMesh(root, new THREE.SphereGeometry(.018, 8, 6), black, [.05, 1.2, -.135]));
+  meshes.push(addMesh(root, new THREE.ConeGeometry(.018, .055, 8), skin, [0, 1.16, -.15], [Math.PI / 2, 0, 0]));
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.045, .32, 3, 7), skin, [-.19, .79, .03], [0, 0, -.55]));
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.045, .32, 3, 7), skin, [.19, .79, .03], [0, 0, .55]));
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.055, .33, 3, 7), black, [-.1, .31, .08], [0, 0, -.18]));
