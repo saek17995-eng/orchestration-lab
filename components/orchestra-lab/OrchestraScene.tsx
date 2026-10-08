@@ -23,6 +23,33 @@ function arcSeats(radius: number, start: number, end: number, count: number, cen
   });
 }
 
+function seatRow(xs: number[], z: number) {
+  return xs.map((x) => new THREE.Vector3(x, .12, z));
+}
+
+function addPlatform(scene: THREE.Scene, points: Array<[number, number]>, color: THREE.ColorRepresentation, y: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(points[0][0], -points[0][1]);
+  points.slice(1).forEach(([x, z]) => shape.lineTo(x, -z));
+  shape.closePath();
+  const panel = new THREE.Mesh(
+    new THREE.ShapeGeometry(shape),
+    new THREE.MeshStandardMaterial({ color, roughness: .68, metalness: .08, emissive: color, emissiveIntensity: .055 }),
+  );
+  panel.rotation.x = -Math.PI / 2;
+  panel.position.y = y;
+  panel.receiveShadow = true;
+  scene.add(panel);
+
+  const outlinePoints = points.map(([x, z]) => new THREE.Vector3(x, y + .035, z));
+  outlinePoints.push(outlinePoints[0].clone());
+  const outline = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(outlinePoints),
+    new THREE.LineBasicMaterial({ color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), .28), transparent: true, opacity: .6 }),
+  );
+  scene.add(outline);
+}
+
 function material(color: THREE.ColorRepresentation, roughness = .58, metalness = .05) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness, emissive: color, emissiveIntensity: .02 });
 }
@@ -119,7 +146,7 @@ function addInstrumentModel(group: THREE.Group, id: string, color: THREE.Color, 
 }
 
 function addMusician(scene: THREE.Scene, id: string, position: THREE.Vector3, color: THREE.Color, index: number) {
-  const root = new THREE.Group(); root.position.copy(position); root.rotation.y = Math.atan2(position.x, position.z - 4); root.userData.id = id; scene.add(root);
+  const root = new THREE.Group(); root.position.copy(position); root.rotation.y = Math.atan2(position.x, position.z - 5.35); root.scale.setScalar(1.12); root.userData.id = id; scene.add(root);
   const skin = material(index % 3 === 0 ? 0xe7b58f : index % 3 === 1 ? 0xc88764 : 0x8c5b45, .82), cloth = material(color.clone().multiplyScalar(.68), .72), black = material(0x18202d, .78);
   const meshes: THREE.Mesh[] = [];
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.18, .43, 4, 10), cloth, [0, .74, 0]));
@@ -154,28 +181,40 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
     const mount = mountRef.current; if (!mount) return;
     let disposed = false;
     const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x07101c, .022);
-    const camera = new THREE.PerspectiveCamera(40, 1, .1, 100); camera.position.set(0, 13.5, 18.5);
+    const camera = new THREE.PerspectiveCamera(36, 1, .1, 120); camera.position.set(0, 20.5, 25.5);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setClearColor(0x07101c, 0); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; mount.appendChild(renderer.domElement);
-    const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.minDistance = 10; controls.maxDistance = 29; controls.maxPolarAngle = Math.PI / 2.08; controls.target.set(0, .3, -1.5);
+    const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.minDistance = 12; controls.maxDistance = 42; controls.maxPolarAngle = Math.PI / 2.08; controls.target.set(0, .3, -2.3);
     scene.add(new THREE.HemisphereLight(0xb9d9ff, 0x28180f, 1.6));
     const key = new THREE.DirectionalLight(0xffe0b5, 4.3); key.position.set(-6, 13, 9); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.camera.left = -12; key.shadow.camera.right = 12; key.shadow.camera.top = 12; key.shadow.camera.bottom = -12; scene.add(key);
     const rim = new THREE.PointLight(0x56d6c2, 28, 30); rim.position.set(7, 6, -8); scene.add(rim);
 
-    const stage = new THREE.Mesh(new THREE.CircleGeometry(10, 96, 0, Math.PI), material(0x111b29, .72, .12)); stage.rotation.x = -Math.PI / 2; stage.rotation.z = Math.PI; stage.position.set(0, -.12, 4); stage.receiveShadow = true; scene.add(stage);
-    const tiers = [
-      { inner: .7, outer: 4.55, color: 0x31265b, y: -.02 }, { inner: 4.65, outer: 6.2, color: 0x205b54, y: .015 },
-      { inner: 6.3, outer: 7.85, color: 0x76501e, y: .05 }, { inner: 7.95, outer: 9.55, color: 0x6e3036, y: .085 },
-    ];
-    tiers.forEach((tier) => { const panel = new THREE.Mesh(new THREE.RingGeometry(tier.inner, tier.outer, 80, 1, 0, Math.PI), new THREE.MeshStandardMaterial({ color: tier.color, roughness: .66, metalness: .08, emissive: tier.color, emissiveIntensity: .05 })); panel.rotation.x = -Math.PI / 2; panel.position.set(0, tier.y, 4); panel.receiveShadow = true; scene.add(panel); });
-    [4.6, 6.25, 7.9].forEach((radius) => { const edge = new THREE.Mesh(new THREE.TorusGeometry(radius, .035, 6, 100, Math.PI), material(0xb98b4c, .3, .6)); edge.rotation.x = Math.PI / 2; edge.rotation.z = Math.PI; edge.position.set(0, .12, 4); scene.add(edge); });
+    const stagePoints: Array<[number, number]> = [[-14.2, 5.75]];
+    for (let index = 0; index <= 48; index += 1) {
+      const angle = Math.PI - index / 48 * Math.PI;
+      stagePoints.push([14.2 * Math.cos(angle), 5.75 - 14.2 * Math.sin(angle)]);
+    }
+    addPlatform(scene, stagePoints, 0x101a28, -.13);
+
+    // Reference-style stepped orchestra zones. The five string platforms keep the
+    // established light-to-dark purple progression from Violin I to Double Bass.
+    addPlatform(scene, [[-13.2,5.35],[-6.35,5.35],[-3.65,.35],[-11.15,-.05]], instrumentVisualMeta.violin1.color, -.035);
+    addPlatform(scene, [[-6.35,5.35],[-1.35,5.2],[-.65,-.25],[-3.65,.35]], instrumentVisualMeta.violin2.color, -.025);
+    addPlatform(scene, [[-1.35,5.2],[3.05,5.15],[2.45,-.05],[-.65,-.25]], instrumentVisualMeta.viola.color, -.015);
+    addPlatform(scene, [[3.05,5.15],[8.45,4.8],[7.35,.05],[2.45,-.05]], instrumentVisualMeta.cello.color, -.005);
+    addPlatform(scene, [[8.45,4.8],[12.85,3.9],[11.05,-1.2],[7.35,.05]], instrumentVisualMeta.bass.color, .005);
+    addPlatform(scene, [[-5.6,-.15],[5.65,-.15],[6.35,-4.55],[-6.35,-4.55]], 0x205b54, .025);
+    addPlatform(scene, [[-11.45,-4.7],[11.45,-4.7],[9.7,-8.55],[-9.7,-8.55]], 0x76501e, .055);
+    addPlatform(scene, [[-8.4,-8.7],[8.4,-8.7],[6.5,-12.35],[-6.5,-12.35]], 0x6e3036, .085);
 
     const layouts: Record<string, THREE.Vector3[]> = {
-      violin1: [...arcSeats(2.12, 1.78, 2.98, 5), ...arcSeats(3.3, 1.9, 2.98, 5)],
-      violin2: [...arcSeats(2.2, .16, 1.34, 4), ...arcSeats(3.34, .22, 1.3, 4)],
-      viola: arcSeats(3.92, 1.14, 1.9, 6), cello: arcSeats(3.98, .42, 1.14, 6), bass: arcSeats(4.42, .08, .46, 4),
-      flute: arcSeats(5.15, 1.65, 1.9, 2), oboe: arcSeats(5.2, 1.28, 1.52, 2), clarinet: arcSeats(5.65, 1.67, 1.93, 2), bassoon: arcSeats(5.68, 1.18, 1.45, 2),
-      horn: arcSeats(6.85, 1.78, 2.35, 4), trumpet: arcSeats(6.85, 1.24, 1.5, 2), trombone: arcSeats(7.2, .65, 1.05, 3), tuba: arcSeats(7.35, .38, .38, 1),
-      timpani: arcSeats(8.65, 1.82, 2.12, 2), percussion: arcSeats(8.7, .75, 1.38, 3),
+      violin1: [...seatRow([-10.7,-9.05,-7.4,-5.75,-4.1], 3.85), ...seatRow([-9.85,-8.2,-6.55,-4.9,-3.25], 1.95)],
+      violin2: [...seatRow([-5.15,-3.45,-1.75,-.05], 3.6), ...seatRow([-4.45,-2.75,-1.05,.65], 1.45)],
+      viola: [...seatRow([-.55,1.2,2.95], 3.55), ...seatRow([.2,1.95,3.7], 1.45)],
+      cello: [...seatRow([4.45,6.2,7.95], 3.45), ...seatRow([3.65,5.4,7.15], 1.3)],
+      bass: [...seatRow([9.15,10.95], 2.95), ...seatRow([8.35,10.15], .75)],
+      flute: seatRow([-4.25,-2.7], -1.25), oboe: seatRow([-.85,.7], -1.25), clarinet: seatRow([2.35,3.9], -1.25), bassoon: seatRow([-1.7,1.7], -3.4),
+      horn: seatRow([-8.15,-6.25,-4.35,-2.45], -6.25), trumpet: seatRow([-.7,1.05], -6.25), trombone: seatRow([3.15,5.05,6.95], -6.25), tuba: seatRow([9.05], -6.25),
+      timpani: seatRow([-4.65,-2.4], -10.05), percussion: seatRow([.25,3.15,6.05], -10.05),
     };
     const visuals = new Map<string, SeatVisual>(), clickables: THREE.Object3D[] = [];
     instruments.forEach((item) => {
@@ -218,25 +257,25 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
     instruments.forEach((item) => installBlenderModel(item.id, blenderAsset?.targetId === item.id ? blenderAsset.url : `./models/instruments/${item.id}.glb`, blenderAsset?.targetId === item.id ? blenderAsset.filename : item.id));
 
     const stringLabels = [
-      { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-3.25, .32, 2.65] },
-      { text: "第二小提琴 · 8", color: instrumentVisualMeta.violin2.color, p: [3.05, .32, 2.6] },
-      { text: "中提琴 · 6", color: instrumentVisualMeta.viola.color, p: [-1.65, .32, .55] },
-      { text: "大提琴 · 6", color: instrumentVisualMeta.cello.color, p: [1.65, .32, .55] },
-      { text: "低音提琴 · 4", color: instrumentVisualMeta.bass.color, p: [4.5, .32, .35] },
+      { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-8.4, .4, 5.05] },
+      { text: "第二小提琴 · 8", color: instrumentVisualMeta.violin2.color, p: [-3.4, .4, 5.0] },
+      { text: "中提琴 · 6", color: instrumentVisualMeta.viola.color, p: [1.0, .4, 4.95] },
+      { text: "大提琴 · 6", color: instrumentVisualMeta.cello.color, p: [5.65, .4, 4.7] },
+      { text: "低音提琴 · 4", color: instrumentVisualMeta.bass.color, p: [10.15, .4, 3.75] },
     ];
-    stringLabels.forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.scale.set(1.7, .43, 1); sprite.position.set(...label.p as [number, number, number]); scene.add(sprite); });
+    stringLabels.forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.scale.set(2.05, .5, 1); sprite.position.set(...label.p as [number, number, number]); scene.add(sprite); });
 
-    [{ text: "弦乐组", color: groupMeta.strings.color, p: [0, .38, .55] }, { text: "木管组", color: groupMeta.woodwinds.color, p: [0, .38, -1.5] }, { text: "铜管组", color: groupMeta.brass.color, p: [0, .38, -3.35] }, { text: "打击乐组", color: groupMeta.percussion.color, p: [0, .38, -5.1] }].forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.position.set(label.p[0], label.p[1], label.p[2]); scene.add(sprite); });
+    [{ text: "弦乐组", color: groupMeta.strings.color, p: [0, .42, 5.72] }, { text: "木管组", color: groupMeta.woodwinds.color, p: [0, .42, -.35] }, { text: "铜管组", color: groupMeta.brass.color, p: [0, .42, -4.92] }, { text: "打击乐组", color: groupMeta.percussion.color, p: [0, .42, -8.92] }].forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.scale.set(2.3, .56, 1); sprite.position.set(label.p[0], label.p[1], label.p[2]); scene.add(sprite); });
 
-    const podium = addMesh(scene as unknown as THREE.Group, new THREE.CylinderGeometry(.64, .78, .2, 32), material(0x8a5b2c, .42, .2), [0, .1, 3.5]);
-    const conductor = new THREE.Group(); conductor.position.set(0, .2, 3.42); scene.add(conductor); addMesh(conductor, new THREE.CapsuleGeometry(.2, .58, 5, 10), material(0x293a67, .64), [0, .82, 0]); addMesh(conductor, new THREE.SphereGeometry(.15, 14, 12), material(0xd3a07f, .8), [0, 1.3, 0]); addMesh(conductor, new THREE.CapsuleGeometry(.045, .52, 3, 8), material(0xd3a07f, .8), [-.28, 1.03, -.05], [0, 0, -1.05]); addMesh(conductor, new THREE.CapsuleGeometry(.045, .52, 3, 8), material(0xd3a07f, .8), [.28, 1.03, -.05], [0, 0, 1.05]); addMesh(conductor, new THREE.CylinderGeometry(.009, .009, .8, 6), material(0xf2e8d5, .3), [.56, 1.32, -.03], [0, 0, .9]);
+    const podium = addMesh(scene as unknown as THREE.Group, new THREE.CylinderGeometry(.78, .94, .24, 32), material(0x8a5b2c, .42, .2), [0, .1, 5.25]);
+    const conductor = new THREE.Group(); conductor.position.set(0, .22, 5.17); conductor.scale.setScalar(1.15); scene.add(conductor); addMesh(conductor, new THREE.CapsuleGeometry(.2, .58, 5, 10), material(0x293a67, .64), [0, .82, 0]); addMesh(conductor, new THREE.SphereGeometry(.15, 14, 12), material(0xd3a07f, .8), [0, 1.3, 0]); addMesh(conductor, new THREE.CapsuleGeometry(.045, .52, 3, 8), material(0xd3a07f, .8), [-.28, 1.03, -.05], [0, 0, -1.05]); addMesh(conductor, new THREE.CapsuleGeometry(.045, .52, 3, 8), material(0xd3a07f, .8), [.28, 1.03, -.05], [0, 0, 1.05]); addMesh(conductor, new THREE.CylinderGeometry(.009, .009, .8, 6), material(0xf2e8d5, .3), [.56, 1.32, -.03], [0, 0, .9]);
     podium.userData.id = "conductor";
     stateRef.current = { visuals, clickables, pulses: new Map() };
 
     const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
     const onPointer = (event: PointerEvent) => { const rect = renderer.domElement.getBoundingClientRect(); pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1; raycaster.setFromCamera(pointer, camera); const hit = raycaster.intersectObjects(clickables, false)[0]; if (hit?.object.userData.id) onSelect(hit.object.userData.id); };
     renderer.domElement.addEventListener("pointerdown", onPointer);
-    const resize = () => { const width = mount.clientWidth, height = mount.clientHeight, compact = width < 720; renderer.setSize(width, height, true); camera.aspect = width / Math.max(height, 1); camera.fov = compact ? 47 : 40; camera.position.set(0, compact ? 13.8 : 12.5, compact ? 18.2 : 17.2); controls.target.set(0, .35, -1.65); camera.updateProjectionMatrix(); };
+    const resize = () => { const width = mount.clientWidth, height = mount.clientHeight, compact = width < 720; renderer.setSize(width, height, true); camera.aspect = width / Math.max(height, 1); camera.fov = compact ? 45 : 36; camera.position.set(0, compact ? 23.5 : 20.5, compact ? 29.5 : 25.5); controls.target.set(0, .35, -2.3); camera.updateProjectionMatrix(); };
     const observer = new ResizeObserver(resize); observer.observe(mount); resize();
     let frame = 0;
     const tick = (time: number) => { controls.update(); stateRef.current?.pulses.forEach((intensity, id) => { const pulse = intensity * (1.75 + Math.sin(time * .008) * .4); stateRef.current?.visuals.get(id)?.halos.forEach((halo) => { (halo.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse; }); }); renderer.render(scene, camera); frame = requestAnimationFrame(tick); };
