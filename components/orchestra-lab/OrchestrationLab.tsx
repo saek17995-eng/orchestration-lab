@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Activity, AudioLines, BookOpen, ChevronLeft, ChevronRight, CircleAlert, FileMusic, Gauge, Info, Layers3, LoaderCircle, Mic, Pause, Play, RotateCcw, Search, Sparkles, Square, Upload, Volume2, VolumeX } from "lucide-react";
+import { Activity, AudioLines, Box, BookOpen, ChevronLeft, ChevronRight, CircleAlert, FileMusic, Gauge, Info, Layers3, LoaderCircle, Mic, Pause, Play, RotateCcw, Search, Sparkles, Square, Upload, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -10,7 +10,7 @@ import { groupMeta, InstrumentGroup, instruments, instrumentVisualMeta } from "@
 import { AudioMode, OrchestraAudioEngine } from "@/lib/audio-engine";
 import { advanceBeatBySeconds, analyzeMeasure, lowerBoundEvent, measureAtBeat, NoteEvent, ParsedScore, parseMusicXML, secondsBetweenBeats, tempoAtBeat } from "@/lib/musicxml";
 import { parseScoreFile } from "@/lib/score-import";
-import { OrchestraScene } from "./OrchestraScene";
+import { BlenderAsset, OrchestraScene } from "./OrchestraScene";
 
 const groups = Object.keys(groupMeta) as InstrumentGroup[];
 
@@ -62,6 +62,8 @@ export function OrchestrationLab() {
   const [assistantReply, setAssistantReply] = useState("可以输入“只播放木管组”“从第5小节开始”或“分析这一段”。");
   const [importMessage, setImportMessage] = useState("正在解析真实 MusicXML 示例…");
   const [importError, setImportError] = useState<string | null>(null);
+  const [blenderAsset, setBlenderAsset] = useState<BlenderAsset | null>(null);
+  const [blenderMessage, setBlenderMessage] = useState("可导入 Blender 导出的 GLB 乐器模型");
 
   const playheadBeatRef = useRef(0);
   const lastFrameRef = useRef<number | null>(null);
@@ -224,10 +226,22 @@ export function OrchestrationLab() {
     event.target.value = "";
   };
 
+  const handleBlenderImport = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]; if (!file) return;
+    if (file.name.split(".").pop()?.toLowerCase() !== "glb") { setBlenderMessage("请在 Blender 中导出单文件 .glb 后再导入。"); event.target.value = ""; return; }
+    if (file.size > 80 * 1024 * 1024) { setBlenderMessage("GLB超过80MB，请在Blender中压缩纹理或减少面数。"); event.target.value = ""; return; }
+    const url = URL.createObjectURL(file);
+    setBlenderAsset((current) => { if (current) URL.revokeObjectURL(current.url); return { url, targetId: selectedId, filename: file.name }; });
+    setBlenderMessage(`${file.name} 已替换${selected.name}模型`);
+    event.target.value = "";
+  };
+
+  useEffect(() => () => { if (blenderAsset) URL.revokeObjectURL(blenderAsset.url); }, [blenderAsset]);
+
   return <main className="min-h-screen min-w-[320px] bg-transparent text-foreground">
     <header className="flex h-16 items-center justify-between border-b border-border/80 bg-[#090d15]/95 px-4 backdrop-blur-xl lg:px-6">
       <div className="flex min-w-0 items-center gap-3"><div className="grid size-9 place-items-center rounded-lg border border-primary/35 bg-primary/10 text-primary"><AudioLines className="size-5" /></div><div className="min-w-0"><h1 className="truncate text-base font-semibold tracking-wide">三维智能管弦乐配器教学系统</h1><p className="truncate text-xs text-muted-foreground">MusicXML / MXL / MIDI · 3D Orchestra · SoundFont</p></div></div>
-      <div className="flex items-center gap-2"><label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border bg-secondary/60 px-3 text-sm hover:bg-secondary"><Upload className="size-4" /><span className="hidden sm:inline">导入乐谱</span><input type="file" accept=".xml,.musicxml,.mxl,.mid,.midi,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/x-midi,audio/midi" onChange={handleImport} className="sr-only" /></label><Button variant="outline" className="border-primary/30 bg-primary/5 text-primary hover:bg-primary/15"><BookOpen />教学模式</Button></div>
+      <div className="flex items-center gap-2"><label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border bg-secondary/60 px-3 text-sm hover:bg-secondary"><Upload className="size-4" /><span className="hidden sm:inline">导入乐谱</span><input type="file" accept=".xml,.musicxml,.mxl,.mid,.midi,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml,application/x-midi,audio/midi" onChange={handleImport} className="sr-only" /></label><label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-cyan-400/30 bg-cyan-400/5 px-3 text-sm text-cyan-200 hover:bg-cyan-400/10" title={`导入模型并替换当前选中的${selected.name}`}><Box className="size-4" /><span className="hidden md:inline">Blender模型</span><input type="file" accept=".glb,model/gltf-binary" onChange={handleBlenderImport} className="sr-only" /></label><Button variant="outline" className="border-primary/30 bg-primary/5 text-primary hover:bg-primary/15"><BookOpen />教学模式</Button></div>
     </header>
     <div className="grid min-h-[calc(100vh-4rem)] grid-cols-1 xl:grid-cols-[250px_minmax(520px,1fr)_330px]">
       <aside className="glass-panel order-2 border-r border-border/80 p-4 xl:order-1">
@@ -237,7 +251,7 @@ export function OrchestrationLab() {
 
       <section className="order-1 flex min-w-0 flex-col xl:order-2">
         <div className="border-b border-border/70 px-4 py-3 lg:px-5"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="flex items-center gap-2"><FileMusic className="size-4 text-primary" /><h2 className="font-semibold">{score?.title ?? "正在载入乐谱"}</h2><span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{score?.sourceFormat ?? "解析中"}</span></div><p className={`mt-1 text-xs ${importError ? "text-destructive" : "text-muted-foreground"}`}>{importError ?? importMessage}</p></div><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="rounded border border-border px-2 py-1">{score ? `${score.beatsPerMeasure}/${score.beatType}` : "—"}</span><span className="rounded border border-border px-2 py-1">♩ = {score ? Math.round(tempoAtBeat(score, playheadBeatRef.current) * speed / 100) : "—"}</span><span className="rounded border border-border px-2 py-1">第 {measure} / {score?.measureCount ?? 1} 小节</span></div></div></div>
-        <div className="relative min-h-[480px] flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(78,111,154,.22),transparent_58%)]"><OrchestraScene activeIds={activeIds.filter((id) => !mutedIds.includes(id))} mutedIds={mutedIds} selectedId={selectedId} onSelect={selectInstrument} /><div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-border/80 bg-[#0c111a]/80 px-3 py-2 backdrop-blur"><p className="text-xs text-muted-foreground">当前真实织体</p><p className="mt-0.5 font-medium">{analysis.density} · {activeIds.length} 个发声区域</p></div><div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-3 rounded-full border border-border/80 bg-[#0c111a]/80 px-4 py-2 text-xs text-muted-foreground backdrop-blur">声部区域实时发光 · 拖动旋转 · 点击席位</div></div>
+        <div className="relative min-h-[480px] flex-1 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(78,111,154,.22),transparent_58%)]"><OrchestraScene activeIds={activeIds.filter((id) => !mutedIds.includes(id))} mutedIds={mutedIds} selectedId={selectedId} blenderAsset={blenderAsset} onSelect={selectInstrument} /><div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-border/80 bg-[#0c111a]/80 px-3 py-2 backdrop-blur"><p className="text-xs text-muted-foreground">当前真实织体</p><p className="mt-0.5 font-medium">{analysis.density} · {activeIds.length} 个发声区域</p></div><div className="absolute right-4 top-4 max-w-[260px] rounded-lg border border-cyan-400/25 bg-[#07141b]/85 px-3 py-2 text-xs backdrop-blur"><div className="flex items-center gap-2 text-cyan-200"><Box className="size-3.5" /><span>Blender资产管线</span></div><p className="mt-1 text-muted-foreground">{blenderMessage}</p>{blenderAsset && <button onClick={() => { URL.revokeObjectURL(blenderAsset.url); setBlenderAsset(null); setBlenderMessage("已恢复系统内置模型"); }} className="mt-1 text-cyan-300 hover:text-cyan-100">恢复内置模型</button>}</div><div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-3 rounded-full border border-border/80 bg-[#0c111a]/80 px-4 py-2 text-xs text-muted-foreground backdrop-blur">声部区域实时发光 · 拖动旋转 · 点击席位</div></div>
         <div className="border-t border-border/80 bg-[#0b1018] p-4"><div className="mb-3 flex items-center gap-3"><Button size="icon-sm" variant="ghost" onClick={() => previewMeasure(measure - 1)} aria-label="上一小节"><ChevronLeft /></Button><Button size="icon" onClick={() => void togglePlayback()} disabled={!score} className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90" aria-label={isPlaying ? "暂停" : "播放"}>{score ? isPlaying ? <Pause /> : <Play className="ml-0.5" /> : <LoaderCircle className="animate-spin" />}</Button><Button size="icon-sm" variant="ghost" onClick={stopPlayback} aria-label="停止"><Square /></Button><Button size="icon-sm" variant="ghost" onClick={() => previewMeasure(measure + 1)} aria-label="下一小节"><ChevronRight /></Button><div className="min-w-24 flex-1"><Progress value={score ? ((measure - 1 + measureProgress / 100) / score.measureCount) * 100 : 0} className="h-1.5 bg-secondary [&_[data-slot=progress-indicator]]:bg-primary" /></div><span className="w-16 text-right text-xs text-muted-foreground">{measure}:{Math.max(1, Math.ceil(measureProgress / 25))}</span><button onClick={() => setSoundEnabled((current) => !current)} className={soundEnabled ? "text-primary" : "text-muted-foreground"} aria-label={soundEnabled ? "关闭声音" : "开启声音"}>{soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}</button><div className="w-20"><Slider value={[volume]} onValueChange={(value) => setVolume(value[0])} max={100} step={1} className="[&_[data-slot=slider-range]]:bg-primary" /></div></div><div className="mb-3 flex flex-wrap items-center gap-3 text-xs"><span className="text-muted-foreground">速度</span><div className="w-32"><Slider value={[speed]} onValueChange={(value) => setSpeed(value[0])} min={50} max={150} step={5} /></div><span className="w-10 text-primary">{speed}%</span><button onClick={() => setSpeed(100)} className="text-muted-foreground hover:text-foreground"><RotateCcw className="size-3.5" /></button><div className="ml-auto flex items-center gap-1 rounded-md border border-border bg-black/20 p-1"><button onClick={() => setAudioMode("samples")} className={`rounded px-2 py-1 ${audioMode === "samples" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>专业采样</button><button onClick={() => setAudioMode("synth")} className={`rounded px-2 py-1 ${audioMode === "synth" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>离线合成</button></div><span className="w-full text-right text-muted-foreground sm:w-auto">{audioStatus} · 首次播放需点击授权</span></div>{score ? <ScoreStrip score={score} measure={measure} onSelect={previewMeasure} /> : <div className="h-24 animate-pulse rounded-lg bg-secondary/40" />}</div>
       </section>
 

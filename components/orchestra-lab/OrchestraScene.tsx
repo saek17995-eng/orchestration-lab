@@ -3,10 +3,12 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { groupMeta, instruments, instrumentVisualMeta } from "@/lib/orchestra-data";
 
-type Props = { activeIds: string[]; mutedIds: string[]; selectedId: string; onSelect: (id: string) => void };
-type SeatVisual = { meshes: THREE.Mesh[]; halos: THREE.Mesh[] };
+export type BlenderAsset = { url: string; targetId: string; filename: string };
+type Props = { activeIds: string[]; mutedIds: string[]; selectedId: string; blenderAsset: BlenderAsset | null; onSelect: (id: string) => void };
+type SeatVisual = { meshes: THREE.Mesh[]; halos: THREE.Mesh[]; instrumentMounts: THREE.Group[] };
 
 const counts: Record<string, number> = {
   violin1: 10, violin2: 8, viola: 6, cello: 6, bass: 4,
@@ -141,10 +143,10 @@ function addMusician(scene: THREE.Scene, id: string, position: THREE.Vector3, co
   const haloMaterial = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .05, transparent: true, opacity: .09, depthWrite: false });
   const halo = new THREE.Mesh(new THREE.CircleGeometry(.57, 32), haloMaterial); halo.rotation.x = -Math.PI / 2; halo.position.set(position.x, .025, position.z); halo.scale.set(1.25, 1, 1); halo.userData.id = id; scene.add(halo);
   for (const mesh of meshes) { mesh.userData.id = id; mesh.userData.baseScale = mesh.scale.clone(); }
-  return { root, meshes, halo };
+  return { root, meshes, halo, instrumentMount };
 }
 
-export function OrchestraScene({ activeIds, mutedIds, selectedId, onSelect }: Props) {
+export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, onSelect }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<{ visuals: Map<string, SeatVisual>; clickables: THREE.Object3D[]; pulses: Map<string, number> } | null>(null);
 
@@ -176,12 +178,39 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, onSelect }: Pr
     };
     const visuals = new Map<string, SeatVisual>(), clickables: THREE.Object3D[] = [];
     instruments.forEach((item) => {
-      const color = new THREE.Color(instrumentVisualMeta[item.id]?.color ?? groupMeta[item.group].color), visual: SeatVisual = { meshes: [], halos: [] };
+      const color = new THREE.Color(instrumentVisualMeta[item.id]?.color ?? groupMeta[item.group].color), visual: SeatVisual = { meshes: [], halos: [], instrumentMounts: [] };
       (layouts[item.id] ?? arcSeats(5, 1.4, 1.7, counts[item.id] ?? 1)).forEach((position, index) => {
-        const person = addMusician(scene, item.id, position, color, index); visual.meshes.push(...person.meshes); visual.halos.push(person.halo); clickables.push(...person.meshes, person.halo);
+        const person = addMusician(scene, item.id, position, color, index); visual.meshes.push(...person.meshes); visual.halos.push(person.halo); visual.instrumentMounts.push(person.instrumentMount); clickables.push(...person.meshes, person.halo);
       });
       visuals.set(item.id, visual);
     });
+
+    if (blenderAsset) {
+      const target = visuals.get(blenderAsset.targetId);
+      if (target) new GLTFLoader().load(blenderAsset.url, ({ scene: imported }) => {
+        target.instrumentMounts.forEach((mount) => {
+          mount.clear();
+          const model = imported.clone(true);
+          model.updateMatrixWorld(true);
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const center = box.getCenter(new THREE.Vector3());
+          const scale = .72 / Math.max(size.x, size.y, size.z, .001);
+          model.scale.setScalar(scale);
+          model.position.set(-center.x * scale, .86 - center.y * scale, -center.z * scale);
+          mount.add(model);
+          model.traverse((object) => {
+            if (!(object instanceof THREE.Mesh)) return;
+            object.castShadow = true;
+            object.receiveShadow = true;
+            object.userData.id = blenderAsset.targetId;
+            object.userData.baseScale = object.scale.clone();
+            target.meshes.push(object);
+            clickables.push(object);
+          });
+        });
+      }, undefined, (error) => console.warn(`Blender模型 ${blenderAsset.filename} 加载失败`, error));
+    }
 
     const stringLabels = [
       { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-3.25, .32, 2.65] },
@@ -208,7 +237,7 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, onSelect }: Pr
     const tick = (time: number) => { controls.update(); stateRef.current?.pulses.forEach((intensity, id) => { const pulse = intensity * (1.75 + Math.sin(time * .008) * .4); stateRef.current?.visuals.get(id)?.halos.forEach((halo) => { (halo.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse; }); }); renderer.render(scene, camera); frame = requestAnimationFrame(tick); };
     tick(0);
     return () => { cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointer); controls.dispose(); renderer.dispose(); scene.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (Array.isArray(object.material) ? object.material : [object.material]).forEach((item) => item.dispose()); } }); if (renderer.domElement.parentElement === mount) mount.removeChild(renderer.domElement); };
-  }, [onSelect]);
+  }, [blenderAsset, onSelect]);
 
   useEffect(() => {
     const state = stateRef.current; if (!state) return; state.pulses.clear();
