@@ -152,6 +152,7 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
 
   useEffect(() => {
     const mount = mountRef.current; if (!mount) return;
+    let disposed = false;
     const scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x07101c, .022);
     const camera = new THREE.PerspectiveCamera(40, 1, .1, 100); camera.position.set(0, 13.5, 18.5);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.setClearColor(0x07101c, 0); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; mount.appendChild(renderer.domElement);
@@ -185,9 +186,12 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
       visuals.set(item.id, visual);
     });
 
-    if (blenderAsset) {
-      const target = visuals.get(blenderAsset.targetId);
-      if (target) new GLTFLoader().load(blenderAsset.url, ({ scene: imported }) => {
+    const loader = new GLTFLoader();
+    const installBlenderModel = (targetId: string, url: string, label: string) => {
+      const target = visuals.get(targetId); if (!target) return;
+      loader.load(url, ({ scene: imported }) => {
+        if (disposed) return;
+        const targetSize = targetId === "bass" ? 1.28 : ["cello", "tuba", "timpani"].includes(targetId) ? 1.02 : targetId === "percussion" ? .92 : .74;
         target.instrumentMounts.forEach((mount) => {
           mount.clear();
           const model = imported.clone(true);
@@ -195,7 +199,7 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
           const box = new THREE.Box3().setFromObject(model);
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
-          const scale = .72 / Math.max(size.x, size.y, size.z, .001);
+          const scale = targetSize / Math.max(size.x, size.y, size.z, .001);
           model.scale.setScalar(scale);
           model.position.set(-center.x * scale, .86 - center.y * scale, -center.z * scale);
           mount.add(model);
@@ -203,14 +207,15 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
             if (!(object instanceof THREE.Mesh)) return;
             object.castShadow = true;
             object.receiveShadow = true;
-            object.userData.id = blenderAsset.targetId;
+            object.userData.id = targetId;
             object.userData.baseScale = object.scale.clone();
             target.meshes.push(object);
             clickables.push(object);
           });
         });
-      }, undefined, (error) => console.warn(`Blender模型 ${blenderAsset.filename} 加载失败`, error));
-    }
+      }, undefined, (error) => console.warn(`Blender模型 ${label} 加载失败，已保留内置回退模型`, error));
+    };
+    instruments.forEach((item) => installBlenderModel(item.id, blenderAsset?.targetId === item.id ? blenderAsset.url : `/models/instruments/${item.id}.glb`, blenderAsset?.targetId === item.id ? blenderAsset.filename : item.id));
 
     const stringLabels = [
       { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-3.25, .32, 2.65] },
@@ -236,7 +241,7 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
     let frame = 0;
     const tick = (time: number) => { controls.update(); stateRef.current?.pulses.forEach((intensity, id) => { const pulse = intensity * (1.75 + Math.sin(time * .008) * .4); stateRef.current?.visuals.get(id)?.halos.forEach((halo) => { (halo.material as THREE.MeshStandardMaterial).emissiveIntensity = pulse; }); }); renderer.render(scene, camera); frame = requestAnimationFrame(tick); };
     tick(0);
-    return () => { cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointer); controls.dispose(); renderer.dispose(); scene.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (Array.isArray(object.material) ? object.material : [object.material]).forEach((item) => item.dispose()); } }); if (renderer.domElement.parentElement === mount) mount.removeChild(renderer.domElement); };
+    return () => { disposed = true; cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener("pointerdown", onPointer); controls.dispose(); renderer.dispose(); scene.traverse((object) => { if (object instanceof THREE.Mesh) { object.geometry.dispose(); (Array.isArray(object.material) ? object.material : [object.material]).forEach((item) => item.dispose()); } }); if (renderer.domElement.parentElement === mount) mount.removeChild(renderer.domElement); };
   }, [blenderAsset, onSelect]);
 
   useEffect(() => {
