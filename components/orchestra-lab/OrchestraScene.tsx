@@ -126,15 +126,18 @@ function addMusician(scene: THREE.Scene, id: string, position: THREE.Vector3, co
   meshes.push(addMesh(root, new THREE.SphereGeometry(.018, 8, 6), black, [-.05, 1.2, -.135]));
   meshes.push(addMesh(root, new THREE.SphereGeometry(.018, 8, 6), black, [.05, 1.2, -.135]));
   meshes.push(addMesh(root, new THREE.ConeGeometry(.018, .055, 8), skin, [0, 1.16, -.15], [Math.PI / 2, 0, 0]));
-  meshes.push(addMesh(root, new THREE.CapsuleGeometry(.045, .32, 3, 7), skin, [-.19, .79, .03], [0, 0, -.55]));
-  meshes.push(addMesh(root, new THREE.CapsuleGeometry(.045, .32, 3, 7), skin, [.19, .79, .03], [0, 0, .55]));
+  meshes.push(addMesh(root, new THREE.CapsuleGeometry(.045, .32, 3, 7), skin, [-.19, .79, -.08], [0, 0, -.55]));
+  meshes.push(addMesh(root, new THREE.CapsuleGeometry(.045, .32, 3, 7), skin, [.19, .79, -.08], [0, 0, .55]));
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.055, .33, 3, 7), black, [-.1, .31, .08], [0, 0, -.18]));
   meshes.push(addMesh(root, new THREE.CapsuleGeometry(.055, .33, 3, 7), black, [.1, .31, .08], [0, 0, .18]));
   addMesh(root, new THREE.BoxGeometry(.47, .06, .43), material(0x4a3740, .8), [0, .36, .28]);
   addMesh(root, new THREE.BoxGeometry(.47, .5, .055), material(0x3a2e35, .8), [0, .6, .47]);
   addMesh(root, new THREE.CylinderGeometry(.018, .018, .7, 6), black, [0, .5, -.55]);
   addMesh(root, new THREE.BoxGeometry(.47, .035, .35), material(0x273344, .55, .1), [0, .83, -.57], [-.45, 0, 0]);
-  meshes.push(...addInstrumentModel(root, id, color, index));
+  const instrumentMount = new THREE.Group();
+  instrumentMount.position.z = -.2;
+  root.add(instrumentMount);
+  meshes.push(...addInstrumentModel(instrumentMount, id, color, index));
   const haloMaterial = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .05, transparent: true, opacity: .09, depthWrite: false });
   const halo = new THREE.Mesh(new THREE.CircleGeometry(.57, 32), haloMaterial); halo.rotation.x = -Math.PI / 2; halo.position.set(position.x, .025, position.z); halo.scale.set(1.25, 1, 1); halo.userData.id = id; scene.add(halo);
   for (const mesh of meshes) { mesh.userData.id = id; mesh.userData.baseScale = mesh.scale.clone(); }
