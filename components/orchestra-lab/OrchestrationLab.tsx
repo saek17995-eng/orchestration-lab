@@ -113,7 +113,7 @@ export function OrchestrationLab() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/demo-orchestra.musicxml")
+    fetch("./demo-orchestra.musicxml")
       .then((response) => { if (!response.ok) throw new Error("示例乐谱加载失败"); return response.text(); })
       .then((xml) => parseMusicXML(xml))
       .then((parsed) => { if (!cancelled) applyScore(parsed, `已解析 ${parsed.parts.length} 个声部、${parsed.events.length} 个真实音符事件`); })

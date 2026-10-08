@@ -215,7 +215,7 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
         });
       }, undefined, (error) => console.warn(`Blender模型 ${label} 加载失败，已保留内置回退模型`, error));
     };
-    instruments.forEach((item) => installBlenderModel(item.id, blenderAsset?.targetId === item.id ? blenderAsset.url : `/models/instruments/${item.id}.glb`, blenderAsset?.targetId === item.id ? blenderAsset.filename : item.id));
+    instruments.forEach((item) => installBlenderModel(item.id, blenderAsset?.targetId === item.id ? blenderAsset.url : `./models/instruments/${item.id}.glb`, blenderAsset?.targetId === item.id ? blenderAsset.filename : item.id));
 
     const stringLabels = [
       { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-3.25, .32, 2.65] },

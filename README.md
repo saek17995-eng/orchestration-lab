@@ -31,6 +31,17 @@ pnpm dev
 
 打开终端显示的本地地址即可使用。
 
+## 纯浏览器版本
+
+无需服务器运行时的静态版本可使用以下命令构建：
+
+```bash
+pnpm build:browser
+pnpm preview:browser
+```
+
+构建产物位于 `dist-browser/`，可以直接部署到任意静态网站托管服务。仓库内的 GitHub Actions 会在 `main` 分支更新后自动构建并发布到 GitHub Pages。
+
 ## Blender 模型
 
 可编辑源文件位于 `scripts/blender/orchestra_instruments.blend`，可重复生成的建模脚本位于 `scripts/blender/generate_orchestra_instruments.py`，网页模型位于 `public/models/instruments/`。
