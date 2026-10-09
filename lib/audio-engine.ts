@@ -9,6 +9,7 @@ const soundfontNames: Record<string, string> = {
   flute: "flute", oboe: "oboe", clarinet: "clarinet", bassoon: "bassoon",
   horn: "french_horn", trumpet: "trumpet", trombone: "trombone", tuba: "tuba",
   timpani: "timpani", percussion: "orchestra_hit", violin1: "violin", violin2: "violin",
+  harp: "orchestral_harp",
   viola: "viola", cello: "cello", bass: "contrabass",
 };
 

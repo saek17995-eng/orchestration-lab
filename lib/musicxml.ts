@@ -26,6 +26,7 @@ const aliases: Array<{ id: string; expressions: RegExp[] }> = [
   { id: "trombone", expressions: [/trombone/i, /长号/] },
   { id: "tuba", expressions: [/tuba/i, /大号/] },
   { id: "timpani", expressions: [/timpani/i, /定音鼓/] },
+  { id: "harp", expressions: [/harp/i, /竖琴/] },
   { id: "percussion", expressions: [/percussion/i, /drum/i, /cymbal/i, /marimba/i, /xylophone/i, /打击乐/, /小军鼓/, /大鼓/, /镲/, /木琴/] },
   { id: "violin1", expressions: [/violin\s*(i|1|Ⅰ)(\b|$)/i, /第一小提琴/] },
   { id: "violin2", expressions: [/violin\s*(ii|2|Ⅱ)(\b|$)/i, /第二小提琴/] },

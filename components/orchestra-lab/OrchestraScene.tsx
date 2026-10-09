@@ -12,35 +12,36 @@ type SeatVisual = { meshes: THREE.Mesh[]; halos: THREE.Mesh[]; instrumentMounts:
 
 const counts: Record<string, number> = {
   violin1: 10, violin2: 8, viola: 6, cello: 6, bass: 4,
+  harp: 1,
   flute: 2, oboe: 2, clarinet: 2, bassoon: 2,
-  horn: 4, trumpet: 2, trombone: 3, tuba: 1, timpani: 2, percussion: 3,
+  horn: 4, trumpet: 2, trombone: 3, tuba: 1, timpani: 2, percussion: 6,
 };
 
 const stageWidthScale = .78;
 
-function seatRow(xs: number[], z: number) {
-  return xs.map((x) => new THREE.Vector3(x * stageWidthScale, .12, z));
+function seatRow(xs: number[], z: number, y = .12) {
+  return xs.map((x) => new THREE.Vector3(x * stageWidthScale, y, z));
 }
 
 function fallbackSeats(count: number) {
   return seatRow(Array.from({ length: count }, (_, index) => (index - (count - 1) / 2) * 1.7), -2.5);
 }
 
-function addPlatform(scene: THREE.Scene, points: Array<[number, number]>, color: THREE.ColorRepresentation, y: number) {
+function addPlatform(scene: THREE.Scene, points: Array<[number, number]>, color: THREE.ColorRepresentation, topY: number, height = .28) {
   const shape = new THREE.Shape();
   shape.moveTo(points[0][0] * stageWidthScale, -points[0][1]);
   points.slice(1).forEach(([x, z]) => shape.lineTo(x * stageWidthScale, -z));
   shape.closePath();
   const panel = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape),
+    new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, curveSegments: 2 }),
     new THREE.MeshStandardMaterial({ color, roughness: .68, metalness: .08, emissive: color, emissiveIntensity: .055 }),
   );
   panel.rotation.x = -Math.PI / 2;
-  panel.position.y = y;
+  panel.position.y = topY - height;
   panel.receiveShadow = true;
   scene.add(panel);
 
-  const outlinePoints = points.map(([x, z]) => new THREE.Vector3(x * stageWidthScale, y + .035, z));
+  const outlinePoints = points.map(([x, z]) => new THREE.Vector3(x * stageWidthScale, topY + .035, z));
   outlinePoints.push(outlinePoints[0].clone());
   const outline = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(outlinePoints),
@@ -78,6 +79,16 @@ function addInstrumentModel(group: THREE.Group, id: string, color: THREE.Color, 
     put(new THREE.BoxGeometry(.34, .022, .045), ebony, [.22, .95, -.075], [0, 0, -.28]);
     put(new THREE.BoxGeometry(.018, .14, .055), material(0xe0bd7c, .52), [.08, .92, -.08], [0, 0, -.28]);
     put(new THREE.CylinderGeometry(.008, .008, .74, 6), material(color, .3, .28), [-.05, .87, .08], [0, 0, .9]);
+  } else if (id === "harp") {
+    put(new THREE.CylinderGeometry(.045, .06, 1.25, 14), wood, [-.34, .76, -.04]);
+    put(new THREE.CylinderGeometry(.075, .11, 1.04, 14), wood, [.25, .71, -.04], [0, 0, -.24]);
+    put(new THREE.CylinderGeometry(.055, .055, .72, 12), gold, [-.03, 1.33, -.04], [0, 0, Math.PI / 2.8]);
+    put(new THREE.CylinderGeometry(.045, .045, .7, 12), wood, [-.02, .18, -.04], [0, 0, Math.PI / 2]);
+    for (let index = 0; index < 11; index += 1) {
+      const x = -.26 + index * .047, height = .98 - index * .025;
+      put(new THREE.CylinderGeometry(.006, .006, height, 6), index % 7 === 0 ? material(0xb91c1c, .25, .35) : index % 7 === 3 ? material(0x1d4ed8, .25, .35) : silver, [x, .67 + index * .012, -.085]);
+    }
+    [-.22, 0, .22].forEach((x) => put(new THREE.BoxGeometry(.13, .035, .08), gold, [x, .08, -.04], [0, 0, -.12]));
   } else if (id === "cello" || id === "bass") {
     const scale = id === "bass" ? 1.38 : 1.05, y = id === "bass" ? .7 : .62;
     put(new THREE.SphereGeometry(.18, 14, 12), wood, [.08, y, -.08], [0, 0, -.08], [scale, scale * 1.35, .5]);
@@ -124,22 +135,39 @@ function addInstrumentModel(group: THREE.Group, id: string, color: THREE.Color, 
     put(new THREE.CylinderGeometry(.255, .255, .025, 24), material(0xead9b4, .72), [0, .66, -.05]);
     put(new THREE.TorusGeometry(.26, .018, 6, 24), gold, [0, .67, -.05], [Math.PI / 2, 0, 0]);
     [-.18, .18].forEach((x) => put(new THREE.CylinderGeometry(.012, .012, .48, 7), wood, [x, .94, .03], [0, 0, x < 0 ? -.45 : .45]));
-  } else if (id === "percussion" && playerIndex % 3 === 0) {
+  } else if (id === "percussion" && playerIndex % 6 === 0) {
     put(new THREE.CylinderGeometry(.31, .31, .18, 24), material(0x8f3d32, .42, .16), [0, .72, -.08], [0, 0, Math.PI / 2]);
     put(new THREE.CylinderGeometry(.315, .315, .025, 24), material(0xe8d9bd, .7), [-.105, .72, -.08], [0, 0, Math.PI / 2]);
     put(new THREE.TorusGeometry(.315, .018, 6, 24), gold, [-.12, .72, -.08], [0, Math.PI / 2, 0]);
     put(new THREE.CylinderGeometry(.018, .018, .62, 8), dark, [-.16, .38, -.08], [0, 0, -.48]);
     put(new THREE.CylinderGeometry(.018, .018, .62, 8), dark, [.16, .38, -.08], [0, 0, .48]);
-  } else if (id === "percussion" && playerIndex % 3 === 1) {
+  } else if (id === "percussion" && playerIndex % 6 === 1) {
     put(new THREE.CylinderGeometry(.22, .22, .13, 24), material(0xd5d8dc, .3, .65), [0, .72, -.06]);
     put(new THREE.CylinderGeometry(.225, .225, .018, 24), material(0xf3ead5, .72), [0, .795, -.06]);
     put(new THREE.TorusGeometry(.22, .012, 6, 24), silver, [0, .79, -.06], [Math.PI / 2, 0, 0]);
     [-.15, .15].forEach((x) => put(new THREE.CylinderGeometry(.009, .009, .48, 7), wood, [x, 1.02, .03], [0, 0, x < 0 ? -.55 : .55]));
-  } else if (id === "percussion") {
+  } else if (id === "percussion" && playerIndex % 6 === 2) {
     put(new THREE.CylinderGeometry(.2, .16, .025, 24), gold, [-.15, .89, -.03], [.2, 0, -.18]);
     put(new THREE.CylinderGeometry(.2, .16, .025, 24), gold, [.15, .89, -.03], [-.2, 0, .18]);
     put(new THREE.SphereGeometry(.035, 10, 8), gold, [-.15, .9, -.03]);
     put(new THREE.SphereGeometry(.035, 10, 8), gold, [.15, .9, -.03]);
+  } else if (id === "percussion" && playerIndex % 6 === 3) {
+    put(new THREE.CylinderGeometry(.011, .011, .52, 7), silver, [-.16, .84, -.04], [0, 0, -.52]);
+    put(new THREE.CylinderGeometry(.011, .011, .52, 7), silver, [.16, .84, -.04], [0, 0, .52]);
+    put(new THREE.CylinderGeometry(.011, .011, .48, 7), silver, [0, .7, -.04], [0, 0, Math.PI / 2]);
+    put(new THREE.CylinderGeometry(.009, .009, .42, 7), wood, [.3, .82, -.04], [0, 0, -.2]);
+  } else if (id === "percussion" && playerIndex % 6 === 4) {
+    Array.from({ length: 9 }, (_, index) => index).forEach((index) => put(new THREE.BoxGeometry(.07, .035, .32 - Math.abs(index - 4) * .015), index % 2 ? wood : material(0xb86735, .42), [-.32 + index * .08, .78, -.05]));
+    [-.3, .3].forEach((x) => put(new THREE.CylinderGeometry(.018, .018, .62, 8), dark, [x, .45, -.03], [0, 0, x < 0 ? -.18 : .18]));
+    put(new THREE.BoxGeometry(.82, .04, .09), dark, [0, .58, -.02]);
+  } else if (id === "percussion") {
+    put(new THREE.BoxGeometry(.86, .045, .06), dark, [0, 1.28, -.02]);
+    [-.38, .38].forEach((x) => put(new THREE.CylinderGeometry(.018, .018, 1.15, 8), dark, [x, .7, -.02]));
+    Array.from({ length: 9 }, (_, index) => index).forEach((index) => {
+      const height = .78 - Math.abs(index - 4) * .055;
+      put(new THREE.CylinderGeometry(.018, .018, height, 10), silver, [-.32 + index * .08, 1.22 - height / 2, -.04]);
+    });
+    put(new THREE.BoxGeometry(.88, .04, .3), dark, [0, .12, -.02]);
   }
   return meshes;
 }
@@ -167,7 +195,7 @@ function addMusician(scene: THREE.Scene, id: string, position: THREE.Vector3, co
   root.add(instrumentMount);
   meshes.push(...addInstrumentModel(instrumentMount, id, color, index));
   const haloMaterial = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: .05, transparent: true, opacity: .09, depthWrite: false });
-  const halo = new THREE.Mesh(new THREE.CircleGeometry(.57, 32), haloMaterial); halo.rotation.x = -Math.PI / 2; halo.position.set(position.x, .025, position.z); halo.scale.set(1.25, 1, 1); halo.userData.id = id; scene.add(halo);
+  const halo = new THREE.Mesh(new THREE.CircleGeometry(.57, 32), haloMaterial); halo.rotation.x = -Math.PI / 2; halo.position.set(position.x, position.y - .095, position.z); halo.scale.set(1.25, 1, 1); halo.userData.id = id; scene.add(halo);
   for (const mesh of meshes) { mesh.userData.id = id; mesh.userData.baseScale = mesh.scale.clone(); }
   return { root, meshes, halo, instrumentMount };
 }
@@ -187,33 +215,35 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
     const key = new THREE.DirectionalLight(0xffe0b5, 4.3); key.position.set(-6, 13, 9); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.camera.left = -12; key.shadow.camera.right = 12; key.shadow.camera.top = 12; key.shadow.camera.bottom = -12; scene.add(key);
     const rim = new THREE.PointLight(0x56d6c2, 28, 30); rim.position.set(7, 6, -8); scene.add(rim);
 
-    const stagePoints: Array<[number, number]> = [[-14.2, 5.75]];
+    const stagePoints: Array<[number, number]> = [[-14.6, 5.9]];
     for (let index = 0; index <= 48; index += 1) {
       const angle = Math.PI - index / 48 * Math.PI;
-      stagePoints.push([14.2 * Math.cos(angle), 5.75 - 14.2 * Math.sin(angle)]);
+      stagePoints.push([14.6 * Math.cos(angle), 5.9 - 18.2 * Math.sin(angle)]);
     }
-    addPlatform(scene, stagePoints, 0x101a28, -.13);
+    addPlatform(scene, stagePoints, 0x101a28, -.13, .22);
 
-    // Reference-style stepped orchestra zones. The five string platforms keep the
-    // established light-to-dark purple progression from Violin I to Double Bass.
-    addPlatform(scene, [[-13.2,5.35],[-6.35,5.35],[-3.65,.35],[-11.15,-.05]], instrumentVisualMeta.violin1.color, -.035);
-    addPlatform(scene, [[-6.35,5.35],[-1.35,5.2],[-.65,-.25],[-3.65,.35]], instrumentVisualMeta.violin2.color, -.025);
-    addPlatform(scene, [[-1.35,5.2],[3.05,5.15],[2.45,-.05],[-.65,-.25]], instrumentVisualMeta.viola.color, -.015);
-    addPlatform(scene, [[3.05,5.15],[8.45,4.8],[7.35,.05],[2.45,-.05]], instrumentVisualMeta.cello.color, -.005);
-    addPlatform(scene, [[8.45,4.8],[12.85,3.9],[11.05,-1.2],[7.35,.05]], instrumentVisualMeta.bass.color, .005);
-    addPlatform(scene, [[-5.6,-.15],[5.65,-.15],[6.35,-4.55],[-6.35,-4.55]], 0x205b54, .025);
-    addPlatform(scene, [[-11.45,-4.7],[11.45,-4.7],[9.7,-8.55],[-9.7,-8.55]], 0x76501e, .055);
-    addPlatform(scene, [[-8.4,-8.7],[8.4,-8.7],[6.5,-12.35],[-6.5,-12.35]], 0x6e3036, .085);
+    // Four clearly separated riser levels mirror the supplied seating chart.
+    // String colours keep the established light-to-dark family progression.
+    addPlatform(scene, [[-13.3,5.35],[-5.5,5.35],[-3.9,.8],[-11.8,.15]], instrumentVisualMeta.violin2.color, 0, .3);
+    addPlatform(scene, [[-5.5,5.35],[2.25,5.35],[2.4,.8],[-3.9,.8]], instrumentVisualMeta.violin1.color, .02, .32);
+    addPlatform(scene, [[-3.9,.65],[3.3,.65],[3.1,-1.35],[-3.7,-1.35]], instrumentVisualMeta.viola.color, .04, .34);
+    addPlatform(scene, [[2.25,5.35],[8.75,4.75],[8.35,.15],[2.4,.8]], instrumentVisualMeta.cello.color, .06, .36);
+    addPlatform(scene, [[8.75,4.75],[13.05,3.8],[11.9,-1.4],[8.35,.15]], instrumentVisualMeta.bass.color, .08, .38);
+    addPlatform(scene, [[-13.1,0],[-9,-.1],[-9.25,-4.35],[-13.2,-3.3]], 0x6e55a8, .5, .72);
+    addPlatform(scene, [[-6.3,-1.55],[6.15,-1.55],[5.65,-5.75],[-5.75,-5.75]], 0x205b54, .55, .77);
+    addPlatform(scene, [[-11.4,-5.95],[11.4,-5.95],[10.2,-9],[-10.2,-9]], 0x76501e, 1.05, 1.27);
+    addPlatform(scene, [[-10.2,-9.2],[10.2,-9.2],[7.9,-12.35],[-7.9,-12.35]], 0x6e3036, 1.55, 1.77);
 
     const layouts: Record<string, THREE.Vector3[]> = {
-      violin1: [...seatRow([-10.7,-9.05,-7.4,-5.75,-4.1], 3.85), ...seatRow([-9.85,-8.2,-6.55,-4.9,-3.25], 1.95)],
-      violin2: [...seatRow([-5.15,-3.45,-1.75,-.05], 3.6), ...seatRow([-4.45,-2.75,-1.05,.65], 1.45)],
-      viola: [...seatRow([-.55,1.2,2.95], 3.55), ...seatRow([.2,1.95,3.7], 1.45)],
-      cello: [...seatRow([4.45,6.2,7.95], 3.45), ...seatRow([3.65,5.4,7.15], 1.3)],
-      bass: [...seatRow([9.15,10.95], 2.95), ...seatRow([8.35,10.15], .75)],
-      flute: seatRow([-4.25,-2.7], -1.25), oboe: seatRow([-.85,.7], -1.25), clarinet: seatRow([2.35,3.9], -1.25), bassoon: seatRow([-1.7,1.7], -3.4),
-      horn: seatRow([-8.15,-6.25,-4.35,-2.45], -6.25), trumpet: seatRow([-.7,1.05], -6.25), trombone: seatRow([3.15,5.05,6.95], -6.25), tuba: seatRow([9.05], -6.25),
-      timpani: seatRow([-4.65,-2.4], -10.05), percussion: seatRow([.25,3.15,6.05], -10.05),
+      violin2: [...seatRow([-11.2,-9.5,-7.8,-6.1], 4.05), ...seatRow([-10.3,-8.6,-6.9,-5.2], 2.05)],
+      violin1: [...seatRow([-4.7,-3.05,-1.4,.25,1.9], 4.1), ...seatRow([-3.9,-2.25,-.6,1.05,2.7], 2.15)],
+      viola: [...seatRow([-2.6,-.8,1], .2), ...seatRow([-1.7,.1,1.9], -1)],
+      cello: [...seatRow([3.6,5.35,7.1], 3.75), ...seatRow([3,4.75,6.5], 1.65)],
+      bass: [...seatRow([9.25,11.05], 2.85), ...seatRow([8.7,10.5], .65)],
+      harp: seatRow([-11.1], -1.75, .62),
+      bassoon: seatRow([-1,1], -2.05, .67), clarinet: seatRow([-1.35,1.35], -3.15, .67), oboe: seatRow([-1.7,1.7], -4.2, .67), flute: seatRow([-2.05,2.05], -5.2, .67),
+      horn: seatRow([-8.7,-6.9,-5.1,-3.3], -7.05, 1.17), trumpet: seatRow([-1.2,.65], -7.05, 1.17), trombone: seatRow([2.85,4.75,6.65], -7.05, 1.17), tuba: seatRow([9.05], -7.05, 1.17),
+      timpani: seatRow([-7.2,-5], -10.45, 1.67), percussion: seatRow([-2.8,-.85,1.1,3.05,5,6.95], -10.55, 1.67),
     };
     const visuals = new Map<string, SeatVisual>(), clickables: THREE.Object3D[] = [];
     instruments.forEach((item) => {
@@ -229,7 +259,7 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
       const target = visuals.get(targetId); if (!target) return;
       loader.load(url, ({ scene: imported }) => {
         if (disposed) return;
-        const targetSize = targetId === "bass" ? 1.28 : ["cello", "tuba", "timpani"].includes(targetId) ? 1.02 : targetId === "percussion" ? .92 : .74;
+        const targetSize = targetId === "bass" ? 1.48 : ["cello", "tuba", "timpani"].includes(targetId) ? 1.2 : .9;
         target.instrumentMounts.forEach((mount) => {
           mount.clear();
           const model = imported.clone(true);
@@ -253,18 +283,22 @@ export function OrchestraScene({ activeIds, mutedIds, selectedId, blenderAsset, 
         });
       }, undefined, (error) => console.warn(`Blender模型 ${label} 加载失败，已保留内置回退模型`, error));
     };
-    instruments.forEach((item) => installBlenderModel(item.id, blenderAsset?.targetId === item.id ? blenderAsset.url : `./models/instruments/${item.id}.glb`, blenderAsset?.targetId === item.id ? blenderAsset.filename : item.id));
+    instruments.forEach((item) => {
+      // Harp and percussion use distinct built-in models; all other families use
+      // the Blender GLBs. An explicitly uploaded Blender file still takes priority.
+      if (!["harp", "percussion"].includes(item.id) || blenderAsset?.targetId === item.id) installBlenderModel(item.id, blenderAsset?.targetId === item.id ? blenderAsset.url : `./models/instruments/${item.id}.glb`, blenderAsset?.targetId === item.id ? blenderAsset.filename : item.id);
+    });
 
     const stringLabels = [
-      { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-8.4, .4, 5.05] },
-      { text: "第二小提琴 · 8", color: instrumentVisualMeta.violin2.color, p: [-3.4, .4, 5.0] },
-      { text: "中提琴 · 6", color: instrumentVisualMeta.viola.color, p: [1.0, .4, 4.95] },
-      { text: "大提琴 · 6", color: instrumentVisualMeta.cello.color, p: [5.65, .4, 4.7] },
+      { text: "第二小提琴 · 8", color: instrumentVisualMeta.violin2.color, p: [-9, .44, 5.05] },
+      { text: "第一小提琴 · 10", color: instrumentVisualMeta.violin1.color, p: [-1.7, .46, 5.05] },
+      { text: "中提琴 · 6", color: instrumentVisualMeta.viola.color, p: [0, .48, .55] },
+      { text: "大提琴 · 6", color: instrumentVisualMeta.cello.color, p: [5.65, .5, 4.55] },
       { text: "低音提琴 · 4", color: instrumentVisualMeta.bass.color, p: [10.15, .4, 3.75] },
     ];
     stringLabels.forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.scale.set(2.05, .5, 1); sprite.position.set(label.p[0] * stageWidthScale, label.p[1], label.p[2]); scene.add(sprite); });
 
-    [{ text: "弦乐组", color: groupMeta.strings.color, p: [0, .42, 5.72] }, { text: "木管组", color: groupMeta.woodwinds.color, p: [0, .42, -.35] }, { text: "铜管组", color: groupMeta.brass.color, p: [0, .42, -4.92] }, { text: "打击乐组", color: groupMeta.percussion.color, p: [0, .42, -8.92] }].forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.scale.set(2.3, .56, 1); sprite.position.set(label.p[0], label.p[1], label.p[2]); scene.add(sprite); });
+    [{ text: "弦乐组", color: groupMeta.strings.color, p: [0, .44, 5.72] }, { text: "竖琴", color: instrumentVisualMeta.harp.color, p: [-8.7, .9, -2.75] }, { text: "木管组", color: groupMeta.woodwinds.color, p: [0, .95, -1.7] }, { text: "铜管组", color: groupMeta.brass.color, p: [0, 1.45, -6.05] }, { text: "打击乐组", color: groupMeta.percussion.color, p: [0, 1.95, -9.35] }].forEach((label) => { const sprite = sectionLabel(label.text, label.color); sprite.scale.set(2.3, .56, 1); sprite.position.set(label.p[0], label.p[1], label.p[2]); scene.add(sprite); });
 
     const podium = addMesh(scene as unknown as THREE.Group, new THREE.CylinderGeometry(.78, .94, .24, 32), material(0x8a5b2c, .42, .2), [0, .1, 5.25]);
     const conductor = new THREE.Group(); conductor.position.set(0, .22, 5.17); conductor.scale.setScalar(1.15); scene.add(conductor); addMesh(conductor, new THREE.CapsuleGeometry(.2, .58, 5, 10), material(0x293a67, .64), [0, .82, 0]); addMesh(conductor, new THREE.SphereGeometry(.15, 14, 12), material(0xd3a07f, .8), [0, 1.3, 0]); addMesh(conductor, new THREE.CapsuleGeometry(.045, .52, 3, 8), material(0xd3a07f, .8), [-.28, 1.03, -.05], [0, 0, -1.05]); addMesh(conductor, new THREE.CapsuleGeometry(.045, .52, 3, 8), material(0xd3a07f, .8), [.28, 1.03, -.05], [0, 0, 1.05]); addMesh(conductor, new THREE.CylinderGeometry(.009, .009, .8, 6), material(0xf2e8d5, .3), [.56, 1.32, -.03], [0, 0, .9]);

@@ -19,6 +19,7 @@ export const instrumentVisualMeta: Record<string, { color: string; players: numb
   viola: { color: "#8b5cf6", players: 6 },
   cello: { color: "#6d28d9", players: 6 },
   bass: { color: "#4c1d95", players: 4 },
+  harp: { color: "#b79cff", players: 1 },
   flute: { color: "#7ce7d3", players: 2 },
   oboe: { color: "#62dcc5", players: 2 },
   clarinet: { color: "#45cbb2", players: 2 },
@@ -28,7 +29,7 @@ export const instrumentVisualMeta: Record<string, { color: string; players: numb
   trombone: { color: "#dca13d", players: 3 },
   tuba: { color: "#c98727", players: 1 },
   timpani: { color: "#ff927f", players: 2 },
-  percussion: { color: "#f66b58", players: 3 },
+  percussion: { color: "#f66b58", players: 6 },
 };
 
 export const instruments: Instrument[] = [
@@ -47,11 +48,12 @@ export const instruments: Instrument[] = [
   { id:"viola", name:"中提琴", english:"Viola", group:"strings", short:"Vla.", range:"C3–E6", commonRange:"C3–C6", transposition:"非移调", character:"温暖、含蓄，中音区融合性好。", technique:"连弓、拨弦、双音", note:"中音区密集时容易失去清晰度。", position:[2.3,0,1.9] },
   { id:"cello", name:"大提琴", english:"Violoncello", group:"strings", short:"Vc.", range:"C2–C6", commonRange:"C2–A5", transposition:"非移调", character:"宽广且富歌唱性，可承担旋律或低音。", technique:"连弓、拨弦、拇指把位", note:"高音旋律与低音支撑不可同时过重。", position:[4.2,0,1.3] },
   { id:"bass", name:"低音提琴", english:"Double Bass", group:"strings", short:"Cb.", range:"E1–C5", commonRange:"E1–G4", transposition:"实际音低八度", character:"提供管弦乐队的低频基础和方向感。", technique:"弓奏、拨弦、泛音", note:"低音区密集排列会产生浑浊感。", position:[4.8,0,-.6] },
+  { id:"harp", name:"竖琴", english:"Harp", group:"strings", short:"Hp.", range:"C♭1–G♯7", commonRange:"C2–G7", transposition:"非移调", character:"清澈、闪耀，适合琶音、和弦与色彩性连接。", technique:"琶音、滑奏、泛音、踏板变音", note:"快速半音变化需要预留踏板转换时间。", position:[-5.1,0,-2.8] },
 ];
 
 export const activeForMeasure = (measure: number): string[] => {
   if (measure <= 4) return ["violin1","violin2","viola","cello","bass"];
-  if (measure <= 8) return ["flute","oboe","clarinet","bassoon","viola","cello"];
+  if (measure <= 8) return ["flute","oboe","clarinet","bassoon","harp","viola","cello"];
   if (measure <= 12) return ["violin1","violin2","horn","trumpet","trombone","tuba"];
   if (measure <= 16) return ["timpani","percussion","violin1","violin2","viola","cello","bass"];
   if (measure <= 20) return instruments.map((item) => item.id);
