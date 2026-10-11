@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "三维智能管弦乐配器教学系统",
-  description: "以三维舞台、同步总谱与可解释分析辅助管弦乐配器学习。",
+  title: "华音｜民族音色与智能配器实验室",
+  description: "融合民族乐器音色认知与三维智能配器训练的一站式音乐课堂工具。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -1,5 +1,5 @@
-import { OrchestrationLab } from "@/components/orchestra-lab/OrchestrationLab";
+import { IntegratedMusicLab } from "@/components/IntegratedMusicLab";
 
 export default function Home() {
-  return <OrchestrationLab />;
+  return <IntegratedMusicLab />;
 }
